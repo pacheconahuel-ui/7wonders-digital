@@ -1,0 +1,18 @@
+{
+  "name": "7wonders-digital",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "src/shared",
+    "src/server",
+    "src/client"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=src/server\" \"npm run dev --workspace=src/client\"",
+    "build": "npm run build --workspace=src/shared && npm run build --workspace=src/server && npm run build --workspace=src/client",
+    "test": "npm run test --workspace=src/server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

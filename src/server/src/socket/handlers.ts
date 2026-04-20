@@ -1,0 +1,122 @@
+import { Server, Socket } from 'socket.io';
+import { ClientToServerEvents, ServerToClientEvents, SocketData, PendingAction } from '@7wonders/shared';
+import {
+  createRoom,
+  joinRoom,
+  rejoinRoom,
+  startGame,
+  getRoom,
+  getEngine,
+  buildPublicState,
+  getLobbyPlayers,
+} from './roomManager';
+
+type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
+type AppServer = Server<ClientToServerEvents, ServerToClientEvents, {}, SocketData>;
+
+export function registerHandlers(io: AppServer, socket: AppSocket): void {
+  // ── LOBBY ─────────────────────────────────────────────────────────────────
+
+  socket.on('lobby:create', (playerName, callback) => {
+    const { roomId, playerId } = createRoom(playerName, socket.id);
+    socket.data.playerId = playerId;
+    socket.data.roomId = roomId;
+    socket.data.playerName = playerName;
+    socket.join(roomId);
+    callback(roomId, playerId);
+    io.to(roomId).emit('lobby:updated', getLobbyPlayers(roomId));
+  });
+
+  socket.on('lobby:join', (roomId, playerName, callback) => {
+    const result = joinRoom(roomId, playerName, socket.id);
+    if ('error' in result) {
+      callback(result.error);
+      return;
+    }
+    socket.data.playerId = result.playerId;
+    socket.data.roomId = roomId;
+    socket.data.playerName = playerName;
+    socket.join(roomId);
+    callback(undefined, result.playerId);
+    io.to(roomId).emit('lobby:updated', getLobbyPlayers(roomId));
+  });
+
+  socket.on('lobby:start', (callback) => {
+    const { roomId, playerId } = socket.data;
+    if (!roomId || !playerId) { callback('Not in a room'); return; }
+
+    const result = startGame(roomId, playerId);
+    if ('error' in result) { callback(result.error); return; }
+
+    callback();
+    broadcastGameState(io, roomId);
+  });
+
+  // ── GAME ──────────────────────────────────────────────────────────────────
+
+  socket.on('game:action', (action: PendingAction, callback) => {
+    const { roomId, playerId } = socket.data;
+    if (!roomId || !playerId) { callback('Not in a room'); return; }
+
+    const engine = getEngine(roomId);
+    if (!engine) { callback('No active game'); return; }
+
+    const error = engine.submitAction(playerId, action);
+    if (error) { callback(error); return; }
+
+    callback();
+    broadcastGameState(io, roomId);
+
+    // If phase advanced to 'military', schedule auto-advance after 4s display
+    const state = engine.getState();
+    if (state.phase === 'military') {
+      setTimeout(() => {
+        engine.startNextAge();
+        broadcastGameState(io, roomId);
+      }, 4000);
+    }
+  });
+
+  socket.on('game:rejoin', (roomId, playerId, callback) => {
+    const ok = rejoinRoom(roomId, playerId, socket.id);
+    if (!ok) { callback('Cannot rejoin'); return; }
+    socket.data.playerId = playerId;
+    socket.data.roomId = roomId;
+    socket.join(roomId);
+    callback();
+
+    const engine = getEngine(roomId);
+    if (engine) {
+      // Game is running — send personalized game state
+      broadcastGameState(io, roomId);
+    } else {
+      // Still in lobby — send player list so WaitingRoom renders correctly
+      socket.emit('lobby:updated', getLobbyPlayers(roomId));
+    }
+  });
+
+  // ── DISCONNECT ────────────────────────────────────────────────────────────
+
+  socket.on('disconnect', () => {
+    // Socket is gone but player data is preserved — they can rejoin
+    const { roomId } = socket.data;
+    if (roomId) {
+      io.to(roomId).emit('game:error', `${socket.data.playerName} disconnected.`);
+    }
+  });
+}
+
+/** Emit the current game state to each player in the room (personalized view). */
+function broadcastGameState(io: AppServer, roomId: string): void {
+  const engine = getEngine(roomId);
+  if (!engine) return;
+
+  const state = engine.getState();
+  const room = getRoom(roomId);
+  if (!room) return;
+
+  for (const member of room.players) {
+    const personalState = buildPublicState(state, member.id);
+    io.to(member.socketId).emit('game:state', personalState);
+  }
+}

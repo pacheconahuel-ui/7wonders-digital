@@ -1,0 +1,108 @@
+import { GameState, PublicGameState, PublicPlayerState, PlayerState } from '@7wonders/shared';
+import { GameEngine, createGameState } from '../game/gameEngine';
+
+interface Room {
+  id: string;
+  players: { id: string; name: string; socketId: string }[];
+  engine: GameEngine | null;
+  phase: 'lobby' | 'playing' | 'finished';
+}
+
+const rooms = new Map<string, Room>();
+
+function generateRoomId(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function generatePlayerId(): string {
+  return `p_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function createRoom(playerName: string, socketId: string): { roomId: string; playerId: string } {
+  const roomId = generateRoomId();
+  const playerId = generatePlayerId();
+  rooms.set(roomId, {
+    id: roomId,
+    players: [{ id: playerId, name: playerName, socketId }],
+    engine: null,
+    phase: 'lobby',
+  });
+  return { roomId, playerId };
+}
+
+export function joinRoom(
+  roomId: string,
+  playerName: string,
+  socketId: string,
+): { playerId: string } | { error: string } {
+  const room = rooms.get(roomId);
+  if (!room) return { error: 'Room not found' };
+  if (room.phase !== 'lobby') return { error: 'Game already started' };
+  if (room.players.length >= 7) return { error: 'Room is full' };
+
+  const playerId = generatePlayerId();
+  room.players.push({ id: playerId, name: playerName, socketId });
+  return { playerId };
+}
+
+export function rejoinRoom(
+  roomId: string,
+  playerId: string,
+  socketId: string,
+): boolean {
+  const room = rooms.get(roomId);
+  if (!room) return false;
+  const player = room.players.find(p => p.id === playerId);
+  if (!player) return false;
+  player.socketId = socketId;
+  return true;
+}
+
+export function startGame(roomId: string, requesterId: string): GameState | { error: string } {
+  const room = rooms.get(roomId);
+  if (!room) return { error: 'Room not found' };
+  if (room.players[0].id !== requesterId) return { error: 'Only host can start' };
+  if (room.players.length < 3) return { error: 'Need at least 3 players' };
+
+  const state = createGameState(roomId, room.players);
+  const engine = new GameEngine(state);
+  engine.startAge();
+  room.engine = engine;
+  room.phase = 'playing';
+  return engine.getState();
+}
+
+export function getRoom(roomId: string): Room | undefined {
+  return rooms.get(roomId);
+}
+
+export function getEngine(roomId: string): GameEngine | null {
+  return rooms.get(roomId)?.engine ?? null;
+}
+
+/** Build the PublicGameState for a specific player. */
+export function buildPublicState(state: GameState, forPlayerId: string): PublicGameState {
+  const myIndex = state.players.findIndex(p => p.id === forPlayerId);
+  const myState = state.players[myIndex];
+
+  const publicPlayers: PublicPlayerState[] = state.players.map(p => {
+    const { hand, pendingAction, ...rest } = p;
+    return {
+      ...rest,
+      handSize: hand.length,
+      hasChosen: p.isReady,
+    };
+  });
+
+  return {
+    ...state,
+    players: publicPlayers,
+    myState,
+    myIndex,
+  };
+}
+
+export function getLobbyPlayers(roomId: string): { id: string; name: string }[] {
+  return rooms.get(roomId)?.players.map(p => ({ id: p.id, name: p.name })) ?? [];
+}

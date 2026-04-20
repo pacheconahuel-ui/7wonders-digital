@@ -1,0 +1,226 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Warm ancient-Mediterranean dark theme */
+  --color-bg:        #0e0c09;
+  --color-surface:   #1a1610;
+  --color-surface2:  #252015;
+  --color-border:    #3d3425;
+  --color-accent:    #e63946;
+  --color-gold:      #d4a017;
+  --color-gold-dim:  #8a6a10;
+  --color-text:      #f0e8d8;
+  --color-text-dim:  #8a7e6e;
+  --color-success:   #4caf6e;
+
+  /* Card palette */
+  --card-brown:        #6b3a14;
+  --card-brown-light:  #9b5523;
+  --card-gray:         #3d4a5c;
+  --card-gray-light:   #5a6e84;
+  --card-blue:         #1a3a6e;
+  --card-blue-light:   #2a5bbf;
+  --card-green:        #14522e;
+  --card-green-light:  #1e8047;
+  --card-yellow:       #7a3c0a;
+  --card-yellow-light: #c8650f;
+  --card-red:          #6b1414;
+  --card-red-light:    #c22020;
+  --card-purple:       #3d1470;
+  --card-purple-light: #6b28c8;
+
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body { min-height: 100svh; background: var(--color-bg); overscroll-behavior: none; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  transition: opacity 0.12s, transform 0.1s, box-shadow 0.12s;
+  touch-action: manipulation;
+}
+button:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+}
+button:active:not(:disabled) { transform: translateY(0); }
+button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Inputs ──────────────────────────────────────────────────────────────── */
+input {
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--color-text);
+  font-size: 1rem;
+  font-family: inherit;
+  width: 100%;
+  transition: border-color 0.15s;
+}
+input:focus { outline: none; border-color: var(--color-gold); box-shadow: 0 0 0 3px rgba(212,160,23,0.18); }
+
+h1, h2, h3 { font-weight: 700; line-height: 1.2; }
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--color-bg); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+/* ── Responsive helpers ──────────────────────────────────────────────────── */
+.hide-mobile { display: block; }
+.show-mobile { display: none; }
+
+@media (max-width: 700px) {
+  :root { font-size: 14px; }
+  .hide-mobile { display: none !important; }
+  .show-mobile { display: block !important; }
+}
+
+/* ── Game layout ─────────────────────────────────────────────────────────── */
+
+/* Table surface — real wood photo texture */
+.game-table {
+  background-image: url('/assets/table-bg.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: local;
+  border-radius: 16px;
+  padding: 12px;
+  border: 1px solid #2e1f08;
+  box-shadow:
+    inset 0 2px 24px rgba(0,0,0,0.45),
+    inset 0 -1px 0 rgba(255,220,100,0.06),
+    0 6px 28px rgba(0,0,0,0.5);
+  position: relative;
+}
+
+/* Subtle inner rim highlight at top */
+.game-table::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,220,100,0.15), transparent);
+  border-radius: 16px 16px 0 0;
+  pointer-events: none;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: 260px 1fr 260px;
+  gap: 10px;
+  align-items: start;
+}
+
+/* My city mat — prominent, gold-trimmed */
+.mat-me {
+  background: linear-gradient(160deg, #1c1912 0%, #141209 100%);
+  border-radius: 10px;
+  border: 1.5px solid var(--color-gold-dim);
+  box-shadow:
+    0 0 24px rgba(212,160,23,0.10),
+    inset 0 1px 0 rgba(212,160,23,0.07);
+  padding: 12px;
+  min-width: 0;  /* prevent hand cards from overflowing grid cell */
+}
+
+/* Neighbor mat — recessed, dimmer */
+.mat-neighbor {
+  background: linear-gradient(160deg, #131008 0%, #0d0b06 100%);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);
+  padding: 10px;
+  min-width: 0;
+  opacity: 0.92;
+}
+
+@media (max-width: 960px) {
+  .game-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .game-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Card hand scroll ────────────────────────────────────────────────────── */
+.hand-scroll {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.hand-scroll::-webkit-scrollbar { height: 3px; }
+.hand-scroll::-webkit-scrollbar-thumb { background: var(--color-border); }
+
+/* ── Action panel ────────────────────────────────────────────────────────── */
+.action-btns {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* ── Overlay / modal ─────────────────────────────────────────────────────── */
+.overlay-bg {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.75);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.overlay-box {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 540px;
+  width: 100%;
+  max-height: 90svh;
+  overflow-y: auto;
+}
+
+/* ── Toast animation ─────────────────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+/* ── Lobby ───────────────────────────────────────────────────────────────── */
+.lobby-wrap {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 48px 24px 24px;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+@media (max-width: 480px) {
+  .lobby-wrap { padding: 32px 16px 24px; }
+}
