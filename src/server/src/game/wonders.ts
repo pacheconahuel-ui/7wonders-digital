@@ -62,7 +62,7 @@ export const WONDERS: WonderBoard[] = [
     stages: [
       { cost: { loom: 2 }, effects: [{ type: 'victory_points', points: 3 }] },
       { cost: { ore: 3, loom: 1 }, effects: [{ type: 'build_from_discard' }] },
-      { cost: { glass: 2, ore: 2 }, effects: [{ type: 'victory_points', points: 7 }] },
+      { cost: { glass: 2, ore: 2 }, effects: [{ type: 'copy_guild' }] },
     ],
   },
   {

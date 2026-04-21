@@ -26,8 +26,8 @@ const WONDER_STAGE_INFO: Record<string, string[]> = {
   lighthouse:    ['3★', '+🪵/🪨/🧱/⚙️', '7★'],
   temple:        ['3★', '+9💰', '7★'],
   babylon:       ['3★', '+🧪 libre', '7★'],
-  olympia:       ['3★', '1 gratis/era', '3★+💰'],
-  halicarnassus: ['3★', 'construir descarte', 'copiar gremio'],
+  olympia:       ['3★', '1 gratis/era', '7★'],
+  halicarnassus: ['3★', 'construir descarte', 'copiar gremio (etapa 3)'],
   giza:          ['3★', '5★', '7★'],
 };
 

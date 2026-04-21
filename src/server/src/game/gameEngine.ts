@@ -271,6 +271,29 @@ export class GameEngine {
     }
   }
 
+  /** Halicarnaso etapa 2: skip picking (only valid when discard pile is empty). */
+  skipDiscardPick(playerId: string): string | null {
+    if (this.state.phase !== 'choose_from_discard') return 'Not in choose_from_discard phase';
+    if (this.state.pendingDiscardPlayerId !== playerId) return 'Not your turn to choose from discard';
+    if (this.state.discardPile.length > 0) return 'Discard pile is not empty — you must pick a card';
+
+    this.state.pendingDiscardPlayerId = undefined;
+    this.addLog(`${this.state.players.find(p => p.id === playerId)?.name ?? playerId} no pudo construir desde el descarte (pila vacía).`);
+
+    if (this.state.turn === 6) {
+      this.endAge();
+    } else {
+      this.passHands();
+      for (const p of this.state.players) {
+        p.isReady = false;
+        p.pendingAction = undefined;
+      }
+      this.state.turn++;
+      this.state.phase = 'choose';
+    }
+    return null;
+  }
+
   /** Halicarnaso etapa 2: build a card from discard pile for free. */
   buildFromDiscard(playerId: string, cardId: string): string | null {
     if (this.state.phase !== 'choose_from_discard') return 'Not in choose_from_discard phase';
@@ -282,9 +305,11 @@ export class GameEngine {
     const card = this.state.discardPile[cardIdx];
     const player = this.state.players.find(p => p.id === playerId)!;
 
-    // Build the card for free
+    // Build the card for free (effects must still apply)
     this.state.discardPile.splice(cardIdx, 1);
     player.builtStructures.push(card);
+    const playerIdx = this.state.players.findIndex(p => p.id === playerId);
+    this.applyCardEffects(player, card, this.leftNeighbor(playerIdx), this.rightNeighbor(playerIdx));
     this.addLog(`${player.name} construyó ${card.name} desde el descarte (Halicarnaso).`);
 
     // Clear pending state
@@ -368,7 +393,7 @@ export class GameEngine {
     if (this.state.log.length > 20) this.state.log.shift();
   }
 
-  /** Generate a random valid action for a bot player. */
+  /** Generate a strategic action for a bot player. */
   getBotAction(playerId: string): PendingAction | null {
     if (this.state.phase !== 'choose') return null;
     const playerIdx = this.state.players.findIndex(p => p.id === playerId);
@@ -378,31 +403,70 @@ export class GameEngine {
 
     const left  = this.leftNeighbor(playerIdx);
     const right = this.rightNeighbor(playerIdx);
-
-    // Shuffle hand for randomness
-    const hand = [...player.hand].sort(() => Math.random() - 0.5);
-
-    // Try to build wonder stage first (25% chance if affordable)
     const wonder = WONDERS.find(w => w.id === player.wonderId)!;
-    if (Math.random() < 0.25 && player.wonderStagesBuilt < wonder.stages.length) {
-      const opt = validateBuildWonderStage(player, left, right, wonder.stages);
-      if (opt.canBuild) {
-        const trade = opt.tradeCost ? { leftCoins: opt.tradeCost.leftCoins, rightCoins: opt.tradeCost.rightCoins } : undefined;
-        return { cardId: hand[0].id, action: { type: 'build_wonder_stage' }, trade };
+    const age = this.state.age;
+
+    // Score each card's strategic value (higher = prefer it)
+    function cardValue(card: Card): number {
+      let v = 0;
+      for (const e of card.effects) {
+        switch (e.type) {
+          case 'victory_points': v += e.points * 3; break;
+          case 'shields':        v += e.count * (age === 3 ? 4 : 3); break;
+          case 'science':        v += 6; break;
+          case 'produce_resource': v += 5; break;
+          case 'produce_choice': v += 4; break;
+          case 'coins':          v += e.amount * 1.5; break;
+          case 'coins_and_vp_from_brown':
+          case 'coins_and_vp_from_gray':
+          case 'coins_and_vp_from_yellow':
+          case 'coins_and_vp_from_wonder': v += 4; break;
+          case 'trade_discount_left':
+          case 'trade_discount_right':
+          case 'trade_discount_both': v += (age === 1 ? 4 : 2); break;
+          case 'extra_science_symbol': v += 8; break;
+          default: v += 1;
+        }
       }
+      // Slight randomness so bots aren't identical
+      v += Math.random() * 2;
+      return v;
     }
 
-    // Try to build a structure
-    for (const card of hand) {
+    // Collect affordable structures sorted by value (descending)
+    const affordable: { card: Card; trade?: TradeDecision }[] = [];
+    for (const card of player.hand) {
       const opt = validateBuildStructure(card, player, left, right);
       if (opt.canBuild) {
         const trade = opt.tradeCost ? { leftCoins: opt.tradeCost.leftCoins, rightCoins: opt.tradeCost.rightCoins } : undefined;
-        return { cardId: card.id, action: { type: 'build_structure' }, trade };
+        affordable.push({ card, trade });
+      }
+    }
+    affordable.sort((a, b) => cardValue(b.card) - cardValue(a.card));
+
+    // Try to build wonder stage (15% chance if affordable and we have a good reason)
+    if (Math.random() < 0.15 && player.wonderStagesBuilt < wonder.stages.length) {
+      const opt = validateBuildWonderStage(player, left, right, wonder.stages);
+      if (opt.canBuild) {
+        const trade = opt.tradeCost ? { leftCoins: opt.tradeCost.leftCoins, rightCoins: opt.tradeCost.rightCoins } : undefined;
+        // Only build wonder stage if we don't have a high-value card available
+        const topCardValue = affordable.length > 0 ? cardValue(affordable[0].card) : 0;
+        if (topCardValue < 8) {
+          const card = player.hand[Math.floor(Math.random() * player.hand.length)];
+          return { cardId: card.id, action: { type: 'build_wonder_stage' }, trade };
+        }
       }
     }
 
-    // Fallback: discard the first card
-    return { cardId: hand[0].id, action: { type: 'discard' } };
+    // Build the highest-value affordable structure
+    if (affordable.length > 0) {
+      const { card, trade } = affordable[0];
+      return { cardId: card.id, action: { type: 'build_structure' }, trade };
+    }
+
+    // Fallback: discard the card with the least value
+    const worstCard = [...player.hand].sort((a, b) => cardValue(a) - cardValue(b))[0];
+    return { cardId: worstCard.id, action: { type: 'discard' } };
   }
 }
 

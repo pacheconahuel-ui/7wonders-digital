@@ -634,7 +634,7 @@ export const AGE3_CARDS: Card[] = [
   { id: 'g_philosophers', name: 'Gremio de Filósofos', color: 'purple', age: 3, minPlayers: [3], cost: { clay: 3, papyrus: 1, loom: 1 }, chainTo: [], effects: [{ type: 'vp_from_green_neighbors', per_card: 1 }] },
   { id: 'g_spies', name: 'Gremio de Espías', color: 'purple', age: 3, minPlayers: [3], cost: { clay: 3, glass: 1 }, chainTo: [], effects: [{ type: 'vp_from_red_neighbors', per_card: 1 }] },
   { id: 'g_magistrates', name: 'Gremio de Magistrados', color: 'purple', age: 3, minPlayers: [3], cost: { wood: 3, stone: 1, loom: 1 }, chainTo: [], effects: [{ type: 'vp_from_blue_neighbors', per_card: 1 }] },
-  { id: 'g_shipowners', name: 'Gremio de Armadores', color: 'purple', age: 3, minPlayers: [3], cost: { wood: 3, glass: 1, papyrus: 1 }, chainTo: [], effects: [{ type: 'vp_from_wonder_stages', include_self: false }] },
+  { id: 'g_shipowners', name: 'Gremio de Armadores', color: 'purple', age: 3, minPlayers: [3], cost: { wood: 3, glass: 1, papyrus: 1 }, chainTo: [], effects: [{ type: 'vp_from_own_brown_gray_purple' }] },
   { id: 'g_strategists', name: 'Gremio de Estrategas', color: 'purple', age: 3, minPlayers: [3], cost: { ore: 2, stone: 1, loom: 1 }, chainTo: [], effects: [{ type: 'vp_from_defeat_tokens_neighbors' }] },
   { id: 'g_scientists', name: 'Gremio de Científicos', color: 'purple', age: 3, minPlayers: [4], cost: { wood: 2, ore: 2, glass: 1 }, chainTo: [], effects: [{ type: 'extra_science_symbol' }] },
   { id: 'g_builders', name: 'Gremio de Constructores', color: 'purple', age: 3, minPlayers: [3], cost: { stone: 2, clay: 2, glass: 1 }, chainTo: [], effects: [{ type: 'vp_from_wonder_stages', include_self: true }] },

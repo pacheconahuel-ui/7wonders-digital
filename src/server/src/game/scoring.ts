@@ -94,14 +94,14 @@ function bestScienceSymbol(sym: { compass: number; gear: number; tablet: number 
 
 /** Score a single guild card as if owned by `player` (used for copy_guild too). */
 function scoreGuildCard(card: { name: string; effects: { type: string; [k: string]: any }[] }, player: PlayerState, left: PlayerState, right: PlayerState): number {
-  if (card.name === 'Gremio de Armadores') {
-    return player.builtStructures.filter(c =>
-      c.color === 'brown' || c.color === 'gray' || c.color === 'purple'
-    ).length;
-  }
   let vp = 0;
   for (const e of card.effects) {
     switch (e.type) {
+      case 'vp_from_own_brown_gray_purple':
+        vp += player.builtStructures.filter(c =>
+          c.color === 'brown' || c.color === 'gray' || c.color === 'purple'
+        ).length;
+        break;
       case 'vp_from_brown_neighbors':
         vp += e.per_card * (countColor(left, 'brown') + countColor(right, 'brown')); break;
       case 'vp_from_gray_neighbors':

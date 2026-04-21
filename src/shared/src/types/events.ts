@@ -11,6 +11,7 @@ export interface ClientToServerEvents {
   'game:choose_from_discard': (cardId: string, callback: (error?: string) => void) => void;
   'game:abandon': (callback: (error?: string) => void) => void;
   'game:chat': (message: string) => void;
+  'game:skip_discard_pick': (callback: (error?: string) => void) => void;
 }
 
 // Events sent FROM server TO client

@@ -48,6 +48,7 @@ export type CardEffect =
   | { type: 'vp_from_green_neighbors'; per_card: number }
   | { type: 'vp_from_wonder_stages'; include_self: boolean }
   | { type: 'vp_from_defeat_tokens_neighbors' }
+  | { type: 'vp_from_own_brown_gray_purple' }
   | { type: 'extra_science_symbol' }
   | { type: 'coins_and_vp_from_brown'; per_card: number; vp_per_card: number }
   | { type: 'coins_and_vp_from_gray'; per_card: number; vp_per_card: number }

@@ -99,6 +99,7 @@ export function formatEffect(effects: CardEffect[]): string {
       case 'vp_from_green_neighbors':  return `★/🟢 vecinos`;
       case 'vp_from_wonder_stages':    return e.include_self ? `★/etapa (todos)` : `★/etapa vecinos`;
       case 'vp_from_defeat_tokens_neighbors': return `★/derrota vecinos`;
+      case 'vp_from_own_brown_gray_purple':   return `★/🪵📦🟣 propias`;
       case 'extra_science_symbol':  return `+🧪 libre`;
       default:                      return (e as any).type;
     }

@@ -107,10 +107,26 @@ export function registerHandlers(io: AppServer, socket: AppSocket): void {
 
     const state = engine.getState();
     if (state.phase === 'military') {
-      setTimeout(() => {
-        engine.startNextAge();
-        broadcastGameState(io, roomId);
-      }, 4000);
+      setTimeout(() => { engine.startNextAge(); broadcastGameState(io, roomId); }, 4000);
+    }
+  });
+
+  socket.on('game:skip_discard_pick', (callback: (err?: string) => void) => {
+    const { roomId, playerId } = socket.data;
+    if (!roomId || !playerId) { callback('Not in a room'); return; }
+
+    const engine = getEngine(roomId);
+    if (!engine) { callback('No active game'); return; }
+
+    const error = engine.skipDiscardPick(playerId);
+    if (error) { callback(error); return; }
+
+    callback();
+    broadcastGameState(io, roomId);
+
+    const state = engine.getState();
+    if (state.phase === 'military') {
+      setTimeout(() => { engine.startNextAge(); broadcastGameState(io, roomId); }, 4000);
     }
   });
 
@@ -184,6 +200,50 @@ function broadcastGameState(io: AppServer, roomId: string): void {
   if (state.phase === 'finished') cleanupRoom(roomId);
 
   if (state.phase === 'choose') triggerBots(io, roomId);
+  if (state.phase === 'choose_from_discard') triggerBotDiscardPick(io, roomId);
+}
+
+/** Auto-pick a discard card for a bot player who triggered Halicarnaso stage 2. */
+function triggerBotDiscardPick(io: AppServer, roomId: string): void {
+  const botIds = getBotIds(roomId);
+  if (botIds.length === 0) return;
+
+  const engine = getEngine(roomId);
+  if (!engine) return;
+
+  const state = engine.getState();
+  if (!state.pendingDiscardPlayerId) return;
+  if (!botIds.includes(state.pendingDiscardPlayerId)) return;
+
+  const delay = 600 + Math.floor(Math.random() * 400);
+  setTimeout(() => {
+    const currentEngine = getEngine(roomId);
+    if (!currentEngine) return;
+    const currentState = currentEngine.getState();
+    if (currentState.phase !== 'choose_from_discard') return;
+    if (!currentState.pendingDiscardPlayerId) return;
+    if (!getBotIds(roomId).includes(currentState.pendingDiscardPlayerId)) return;
+
+    const botId = currentState.pendingDiscardPlayerId;
+    const discard = currentState.discardPile;
+
+    let err: string | null;
+    if (discard.length === 0) {
+      err = currentEngine.skipDiscardPick(botId);
+    } else {
+      // Pick a random card from the discard pile
+      const card = discard[Math.floor(Math.random() * discard.length)];
+      err = currentEngine.buildFromDiscard(botId, card.id);
+    }
+
+    if (!err) {
+      broadcastGameState(io, roomId);
+      const newState = currentEngine.getState();
+      if (newState.phase === 'military') {
+        setTimeout(() => { currentEngine.startNextAge(); broadcastGameState(io, roomId); }, 4000);
+      }
+    }
+  }, delay);
 }
 
 /** Auto-submit actions for all bot players, with a small delay for realism. */
